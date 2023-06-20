@@ -19,6 +19,7 @@ pipeline{
   }
   stages{
     stage('Setup') {
+      steps{
           withCredentials([string(credentialsId: DBTOKEN, variable: 'TOKEN')]) {
             sh """#!/bin/bash
                 # Configure Databricks CLI for deployment
@@ -26,11 +27,14 @@ pipeline{
                 $TOKEN" | databricks configure --token
               """
           }
+        }
       }
     
     stage('Checkout') { // for display purposes
-      echo "Pulling ${CURRENTRELEASE} Branch from Github"
-      git branch: CURRENTRELEASE, credentialsId: GITHUBCREDID, url: GITREPOREMOTE
+      steps{
+        echo "Pulling ${CURRENTRELEASE} Branch from Github"
+        git branch: CURRENTRELEASE, credentialsId: GITHUBCREDID, url: GITREPOREMOTE
+      }
     }
     /*
     stage('Build Artifact') {
