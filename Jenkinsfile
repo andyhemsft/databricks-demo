@@ -48,7 +48,7 @@ pipeline{
             export PATH=$PATH:$HOME/.local/bin
         
             # Use Databricks CLI to deploy notebooks
-            databricks workspace import_dir ${NOTEBOOKPATH} ${WORKSPACEPATH}
+            databricks workspace import_dir ${NOTEBOOKPATH} ${WORKSPACEPATH} || exit 0
 
             databricks workspace list ${WORKSPACEPATH}
         """
