@@ -1,12 +1,12 @@
-def GITREPO         = "workspace/${env.JOB_NAME}"
+def GITREPO         = "/home/jenkins/workspace/${env.JOB_NAME}"
 def GITREPOREMOTE   = "https://github.com/andyhemsft/databricks-demo.git"
 def GITHUBCREDID    = "github-access-token"
 def CURRENTRELEASE  = "main"
 def DBTOKEN         = "databricks-access-token"
 def DBURL           = "https://adb-3520826253183044.4.azuredatabricks.net"
-def NOTEBOOKPATH    = "${GITREPO}/Workspace"
+def NOTEBOOKPATH    = "${GITREPO}/notebooks"
 def BUILDPATH       = "${GITREPO}/Builds/${env.JOB_NAME}-${env.BUILD_NUMBER}"
-def WORKSPACEPATH   = "/Shared/UAT/Jenkins-Demo"
+def WORKSPACEPATH   = "/UAT/Jenkins-Demo"
 def DBFSPATH        = "dbfs:<dbfs-path>"
 def CLUSTERID       = "<cluster-id>"
 
@@ -23,8 +23,13 @@ pipeline{
           withCredentials([string(credentialsId: DBTOKEN, variable: 'TOKEN')]) {
             sh """#!/bin/bash
                 # Configure Databricks CLI for deployment
+
+                export PATH=$PATH:$HOME/.local/bin
+                
                 echo "${DBURL}
                 $TOKEN" | databricks configure --token
+                
+                databricks workspace list
               """
           }
         }
@@ -36,25 +41,19 @@ pipeline{
         git branch: CURRENTRELEASE, credentialsId: GITHUBCREDID, url: GITREPOREMOTE
       }
     }
-    /*
-    stage('Build Artifact') {
-      sh """mkdir -p ${BUILDPATH}/Workspace
-            #Get modified files
-            git diff --name-only --diff-filter=AMR HEAD^1 HEAD | xargs -I '{}' cp --parents -r '{}' ${BUILDPATH}
-
-            # Generate artifact
-            tar -czvf Builds/latest_build.tar.gz ${BUILDPATH}
-        """
-      archiveArtifacts artifacts: 'Builds/latest_build.tar.gz'
-    }
+    
     stage('Deploy') {
-      sh """#!/bin/bash
+      steps{
+        sh """#!/bin/bash
+            export PATH=$PATH:$HOME/.local/bin
+        
             # Use Databricks CLI to deploy notebooks
-            databricks workspace import_dir ${BUILDPATH}/Workspace ${WORKSPACEPATH}
+            databricks workspace import_dir ${NOTEBOOKPATH} ${WORKSPACEPATH}
 
-            # dbfs cp -r ${BUILDPATH}/Libraries/python ${DBFSPATH}
+            databricks workspace list ${WORKSPACEPATH}
         """
+      }
     }
-    */
+    
   }
 }
