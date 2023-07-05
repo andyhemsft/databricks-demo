@@ -13,18 +13,36 @@ def CLUSTERID       = "<cluster-id>"
 
 pipeline{
   agent {
-    node {
-        label 'agent01'
-    }
+      docker { 
+          image 'python:3.8-slim' 
+          label 'agent01'
+      }
   }
   stages{
+      stage('Install Dependency') {
+        steps {
+            sh """#!/bin/bash
+                python3 -m venv .venv                
+                
+                . .venv/bin/activate
+                
+                pip3 install databricks-cli
+                
+                databricks -v
+              """
+            }
+    }
     stage('Setup') {
       steps{
           withCredentials([string(credentialsId: DBTOKEN, variable: 'TOKEN')]) {
             sh """#!/bin/bash
                 # Configure Databricks CLI for deployment
 
-                export PATH=$PATH:$HOME/.local/bin
+                python3 -m venv .venv                
+                
+                . .venv/bin/activate
+
+                # export PATH=$PATH:$HOME/.local/bin
                 
                 echo "${DBURL}
                 $TOKEN" | databricks configure --token
@@ -45,7 +63,11 @@ pipeline{
     stage('Deploy') {
       steps{
         sh """#!/bin/bash
-            export PATH=$PATH:$HOME/.local/bin
+            # export PATH=$PATH:$HOME/.local/bin
+
+            python3 -m venv .venv                
+                
+            . .venv/bin/activate
         
             # Use Databricks CLI to deploy notebooks
             databricks workspace import_dir ${NOTEBOOKPATH} ${WORKSPACEPATH} || exit 0
