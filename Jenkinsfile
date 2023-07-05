@@ -40,7 +40,6 @@ pipeline{
 
                 export DATABRICKS_CONFIG_FILE=./.databrickscfg
                 
-                # export PATH=$PATH:$HOME/.local/bin
                 
                 echo "${DBURL}
                 $TOKEN" | databricks configure --token
@@ -61,7 +60,6 @@ pipeline{
     stage('Deploy') {
       steps{
         sh """#!/bin/bash
-            # export PATH=$PATH:$HOME/.local/bin
 
             python3 -m venv .venv                
                 
@@ -70,7 +68,14 @@ pipeline{
             export DATABRICKS_CONFIG_FILE=./.databrickscfg
         
             # Use Databricks CLI to deploy notebooks
-            databricks workspace import_dir ${NOTEBOOKPATH} ${WORKSPACEPATH} || exit 0
+            STATUS=\$(databricks workspace import_dir -o ${NOTEBOOKPATH} ${WORKSPACEPATH})
+            
+            if [[ \$STATUS == *"error_code"* ]]; then
+                echo \$STATUS
+                exit -1
+            else
+                echo \$STATUS
+            fi
 
             databricks workspace list ${WORKSPACEPATH}
         """
