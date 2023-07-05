@@ -38,7 +38,7 @@ pipeline{
                 # Configure Databricks CLI for deployment             
                 . .venv/bin/activate
 
-                databricks -v
+                export DATABRICKS_CONFIG_FILE=./.databrickscfg
                 
                 # export PATH=$PATH:$HOME/.local/bin
                 
@@ -66,6 +66,8 @@ pipeline{
             python3 -m venv .venv                
                 
             . .venv/bin/activate
+            
+            export DATABRICKS_CONFIG_FILE=./.databrickscfg
         
             # Use Databricks CLI to deploy notebooks
             databricks workspace import_dir ${NOTEBOOKPATH} ${WORKSPACEPATH} || exit 0
