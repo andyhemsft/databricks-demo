@@ -36,10 +36,7 @@ pipeline{
       steps{
           withCredentials([string(credentialsId: DBTOKEN, variable: 'TOKEN')]) {
             sh """#!/bin/bash
-                # Configure Databricks CLI for deployment
-
-                python3 -m venv .venv                
-                
+                # Configure Databricks CLI for deployment             
                 . .venv/bin/activate
 
                 # export PATH=$PATH:$HOME/.local/bin
