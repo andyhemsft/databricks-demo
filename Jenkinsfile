@@ -19,18 +19,17 @@ pipeline{
       }
   }
   stages{
-      stage('Install Dependency') {
-        steps {
-            sh """#!/bin/bash
-                python3 -m venv .venv                
-                
-                . .venv/bin/activate
-                
-                pip3 install databricks-cli
-                
-                databricks -v
-              """
-            }
+    stage('Install Dependency') {
+      steps {
+          sh """#!/bin/bash
+              python3 -m venv .venv                
+              
+              . .venv/bin/activate
+              
+              pip3 install databricks-cli
+              
+            """
+          }
     }
     stage('Setup') {
       steps{
@@ -39,6 +38,8 @@ pipeline{
                 # Configure Databricks CLI for deployment             
                 . .venv/bin/activate
 
+                databricks -v
+                
                 # export PATH=$PATH:$HOME/.local/bin
                 
                 echo "${DBURL}
