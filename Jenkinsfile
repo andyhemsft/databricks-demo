@@ -19,6 +19,22 @@ pipeline{
       }
   }
   stages{
+    stage ("Specify the release branch") {
+      steps {
+        script {
+          CURRENTRELEASE = input message: 'Please enter the release branch name',
+                             parameters: [string(defaultValue: '',
+                                          description: '',
+                                          name: 'Current Release Branch')]
+           if (!(CURRENTRELEASE.startsWith('release'))) {
+                error "${CURRENTRELEASE} is not a release branch. Stop the CI/CD process."
+            }
+            else {
+                echo "${CURRENTRELEASE} will be deployed."
+            }
+        }
+      }
+    }
     stage('Install Dependency') {
       steps {
           sh """#!/bin/bash
@@ -81,6 +97,11 @@ pipeline{
         """
       }
     }
-    
+  }
+  // Clean up the workspace after build
+  post { 
+    cleanup  { 
+      cleanWs()
+    }
   }
 }
