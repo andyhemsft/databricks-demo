@@ -1,0 +1,89 @@
+def REPO_ID         = "" // REPO ID for PROD
+def GITHUBCREDID    = "github-access-token"
+def CURRENTRELEASE  = ""
+def DBTOKEN         = "databricks-access-token"
+def DBURL           = "https://adb-3520826253183044.4.azuredatabricks.net"
+
+pipeline{
+  agent {
+    label 'agent01 || agent02'
+  }
+
+  stages{
+    stage ("Specify the release branch") {
+      steps {
+        script {
+          CURRENTRELEASE = input message: 'Please enter the release branch name',
+                             parameters: [string(defaultValue: '',
+                                          description: '',
+                                          name: 'Current Release Branch')]
+           if (!(CURRENTRELEASE.startsWith('release'))) {
+                error "${CURRENTRELEASE} is not a release branch. Stop the CI/CD process."
+            }
+            else {
+                echo "${CURRENTRELEASE} will be deployed."
+            }
+        }
+      }
+    }
+    stage('Install Dependency') {
+      steps {
+          sh """#!/bin/bash
+              python3 -m venv .venv                
+              
+              . .venv/bin/activate
+              
+              pip3 install databricks-cli==0.17.7
+              
+            """
+          }
+    }
+    stage('Setup') {
+      steps{
+        withCredentials([string(credentialsId: DBTOKEN, variable: 'TOKEN')]) {
+          sh """#!/bin/bash
+              # Configure Databricks CLI for deployment             
+              . .venv/bin/activate
+
+              export DATABRICKS_CONFIG_FILE=./.databrickscfg
+              
+              echo "${DBURL}
+              $TOKEN" | databricks configure --token
+              
+              databricks workspace list
+            """
+        }
+      }
+    }
+    
+    stage('Deploy') {
+      steps{
+        sh """#!/bin/bash
+
+            python3 -m venv .venv                
+                
+            . .venv/bin/activate
+            
+            export DATABRICKS_CONFIG_FILE=./.databrickscfg
+        
+            # Use Databricks CLI to deploy notebooks
+            STATUS=\$(databricks repos update --repo-id ${REPO_ID} --branch ${CURRENTRELEASE})
+            
+            if [[ \$STATUS == *"error_code"* ]]; then
+                echo \$STATUS
+                exit -1
+            else
+                echo \$STATUS
+            fi
+        """
+      }
+    }
+  }
+  
+  // Clean up the workspace after build
+  post { 
+    cleanup  { 
+      cleanWs()
+    }
+  }
+}
