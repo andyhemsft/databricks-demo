@@ -1,0 +1,109 @@
+def GITREPO         = "/mnt/Jenkins/data/jenkins_remote_fs/workspace/${env.JOB_NAME}"
+def GITREPOREMOTE   = "https://github.com/mfc-dataoffice/Databricks-CICD-Demo.git"
+def GITHUBCREDID    = "winky-github-access-token"
+def CURRENTRELEASE  = ""
+def DBTOKEN         = "winky-databricks-access-token-nonprod"
+def DBURL           = "https://adb-8903987430258027.7.azuredatabricks.net"
+def NOTEBOOKPATH    = "${GITREPO}/notebooks"
+def WORKSPACEPATH   = "/DEV/Databricks-CICD-Demo"
+
+pipeline{
+  agent {
+    label 'AZLAPNEDLGHAR01'
+  }
+
+  stages{
+    stage ("Specify the PR ID") {
+      steps {
+        script {
+          CURRENTRELEASE = input message: 'Please enter the PR ID',
+                             parameters: [string(defaultValue: '',
+                                          description: '',
+                                          name: 'Pull Request ID')]
+          echo "PR #${CURRENTRELEASE} will be tested."
+        }
+      }
+    }
+    stage('Install Dependency') {
+      steps {
+          sh """#!/bin/bash
+              python3 -m venv .venv                
+              
+              . .venv/bin/activate
+              
+              pip3 install databricks-cli==0.17.7
+              
+            """
+          }
+    }
+    stage('Setup') {
+      steps{
+          withCredentials([string(credentialsId: DBTOKEN, variable: 'TOKEN')]) {
+            sh """#!/bin/bash
+                # Configure Databricks CLI for deployment             
+                . .venv/bin/activate
+
+                export DATABRICKS_CONFIG_FILE=./.databrickscfg
+                
+                echo "${DBURL}
+                $TOKEN" | databricks configure --token
+                
+                databricks workspace list
+              """
+          }
+        }
+      }
+    
+    stage('Checkout') { // for display purposes
+      steps{
+        echo "Pulling PR-${CURRENTRELEASE}-merge Branch from Github"
+        checkout(
+            [$class: 'GitSCM', branches: [[name: "PR-${CURRENTRELEASE}-merge"]], 
+            doGenerateSubmoduleConfigurations: false,
+            submoduleCfg: [], 
+            // extensions: [
+            //     [$class: 'CleanBeforeCheckout']
+            // ],
+            userRemoteConfigs: [
+                    [
+                        credentialsId: GITHUBCREDID, 
+                        name: 'origin', 
+                        refspec: "+refs/pull/${CURRENTRELEASE}/merge:refs/remotes/origin/PR-${CURRENTRELEASE}-merge", 
+                        url: GITREPOREMOTE
+                    ]
+                ]
+            ]
+        )
+      }
+    }
+    
+    stage('Deploy') {
+      steps{
+        sh """#!/bin/bash
+                
+            . .venv/bin/activate
+            
+            export DATABRICKS_CONFIG_FILE=./.databrickscfg
+        
+            # Use Databricks CLI to deploy notebooks
+            STATUS=\$(databricks workspace import_dir -o ${NOTEBOOKPATH} ${WORKSPACEPATH})
+            
+            if [[ \$STATUS == *"error_code"* || \$STATUS == *"error"* || \$STATUS == *"Error"* ]]; then
+                echo \$STATUS
+                exit -1
+            else
+                echo \$STATUS
+            fi
+
+            databricks workspace list ${WORKSPACEPATH}
+        """
+      }
+    }
+  }
+  // Clean up the workspace after build
+//   post { 
+//     cleanup  { 
+//       cleanWs()
+//     }
+//   }
+}
